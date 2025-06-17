@@ -20,11 +20,13 @@ def extract_text(mmd_content: str) -> List[Document]:
     updated_documents = []
 
     for i, doc in enumerate(documents):
-        headers = ', '.join(list(doc.metadata.values()))
+        headers_list = list(doc.metadata.values())
+        headers = ', '.join(headers_list)
+
+        if 'references' in headers.lower() or len(headers_list) == 1:
+            continue
+
         metadata = {'source': 'text', 'headers': headers}
         updated_documents.append(Document(page_content=doc.page_content, metadata=metadata, id=i))
 
     return updated_documents
-
-def clean_data(mmd_content: str):
-    pass

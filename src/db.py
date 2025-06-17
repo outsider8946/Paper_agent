@@ -1,15 +1,23 @@
 import logging
 from uuid import uuid4
+from omegaconf import DictConfig
 from typing import Optional, Dict
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from utils.extract_utils import extract_text, extract_tables, extract_equations
 
 class DBWorker():
-    def __init__(self, mmd_content: Optional[str] = None, debug: bool = False):
+    def __init__(self, config: DictConfig, mmd_content: Optional[str] = None):
+        self.model_name = config.embeddings.model_name
+        self.device = config.embeddings.device
+        
+        self.k_text = config.rag.k_text
+        self.k_eqation = config.rag.k_equation
+        self.k_table = config.rag.k_table
+        self.debug = config.rag.debug
+
         self.embeddings = self._get_embeddings()
         self.db = self._create_db()
-        self.debug = debug
 
         if mmd_content is not None:
             collection = self.db._client.get_collection('paper_collection')
@@ -18,14 +26,18 @@ class DBWorker():
                 collection.delete(ids=ids)
             self._fill_db(mmd_content)
     
-    def search(self, query: str, k: int = 5, filter: Optional[Dict] = None):
+    def search(self, query: str):
         logging.info(f'Similirarty search for query: {query}')
-        return self.db.similarity_search(query=query, k=k, filter=filter)
+        texts = self.db.similarity_search(query=query, k=self.k_text, filter={'source':'text'})
+        equations = self.db.similarity_search(query=query, k=self.k_eqation, filter={'source':'equation'})
+        tables = self.db.similarity_search(query=query, k=self.k_table, filter={'source':'table'})
+
+        return texts + equations + tables
 
     def _get_embeddings(self):
         return HuggingFaceEmbeddings(
-            model_name='BAAI/bge-small-en-v1.5',
-            model_kwargs={'device': 'cuda'},
+            model_name=self.model_name,
+            model_kwargs={'device': self.device},
             encode_kwargs={'normalize_embeddings': True},
         )
     

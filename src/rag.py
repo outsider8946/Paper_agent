@@ -1,19 +1,20 @@
 import os
 import logging
 from pathlib import Path
+from omegaconf import DictConfig
 from db import DBWorker
 from llm import LLMWorker
 
 class RAG():
-    def __init__(self, path2pdf: str, model_name: str, debug: bool = False):
+    def __init__(self, path2pdf: str, config: DictConfig):
         self._ocr(path2pdf=path2pdf)
         mmd_content = self._get_content()
-        self.debug = debug
-        self.db_worker = DBWorker(mmd_content=mmd_content, debug=debug)
-        self.llm_worker = LLMWorker(model_name)
+        self.debug = config.rag.debug
+        self.db_worker = DBWorker(mmd_content=mmd_content, config=config)
+        self.llm_worker = LLMWorker(config=config)
     
     def __call__(self, query):
-        documents = self.db_worker.search(query, k=2)
+        documents = self.db_worker.search(query)
         context = ''
 
         for doc in documents:
