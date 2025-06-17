@@ -1,0 +1,10 @@
+embeddings:
+  - name: "bge large"
+    model_name: "BAAI/bge-large-en-v1.5"
+  
+  - name: "bge base"
+    moldel_name: "BAAI/bge-base-en-v1.5"
+
+  - name: "bge small"
+    model_name: "BAAI/bge-small-en-v1.5"
+
