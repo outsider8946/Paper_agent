@@ -1,9 +1,9 @@
 embeddings:
-  model_name: "BAAI/bge-small-en-v1.5"
+  model_name:  "BAAI/bge-small-en-v1.5" #'BAAI/bge-m3'
   device: cuda
 
 llm:
-  model_name: "qwen3:4b"
+  model_name: "qwen/qwen3-30b-a3b:free"
   temperature: 0.6
   top_k: 20
   top_p: 0.95

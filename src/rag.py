@@ -2,8 +2,11 @@ import os
 import logging
 from pathlib import Path
 from omegaconf import DictConfig
+from langchain_core.prompts import ChatPromptTemplate
+from utils.templates import SYSTEM_RAG_TEMPLATE
+from langchain_core.output_parsers.string import StrOutputParser
 from db import DBWorker
-from llm import LLMWorker
+from llm import LLMOpenRouter
 
 class RAG():
     def __init__(self, path2pdf: str, config: DictConfig):
@@ -11,7 +14,7 @@ class RAG():
         mmd_content = self._get_content()
         self.debug = config.rag.debug
         self.db_worker = DBWorker(mmd_content=mmd_content, config=config)
-        self.llm_worker = LLMWorker(config=config)
+        self.llm = LLMOpenRouter(model_name=config.llm.model_name)
     
     def __call__(self, query):
         documents = self.db_worker.search(query)
@@ -22,8 +25,14 @@ class RAG():
         
         if self.debug:
             logging.info(f'Answering by context.\n\nquery:{query}\n\ncontext:{context}')
+        
+        prompt = ChatPromptTemplate([
+            ('system', SYSTEM_RAG_TEMPLATE),
+            ('human', '{query}')
+        ])
+        chain = prompt | self.llm | StrOutputParser()
             
-        return self.llm_worker.answer_by_context(query=query, context=context)
+        return chain.invoke({'query':query, 'context':context})
     
     def _get_content(self):
         content = None
