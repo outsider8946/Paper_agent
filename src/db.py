@@ -10,7 +10,6 @@ from utils.extract_utils import extract_text, extract_tables, extract_equations
 class DBWorker():
     def __init__(self, config: DictConfig, mmd_content: Optional[str] = None):
         self.model_name = config.embeddings.model_name
-        self.device = config.embeddings.device
         
         self.k_text = config.rag.k_text
         self.k_eqation = config.rag.k_equation
@@ -33,7 +32,7 @@ class DBWorker():
         equations = self.db.similarity_search(query=query, k=self.k_eqation, filter={'source':'equation'})
         tables = self.db.similarity_search(query=query, k=self.k_table, filter={'source':'table'})
 
-        return texts + equations + tables
+        return {'texts':texts, 'equations':equations, 'tables':tables}#texts + equations + tables
 
     def _get_embeddings(self):
         return OllamaEmbeddings(

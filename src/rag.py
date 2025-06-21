@@ -21,17 +21,36 @@ class RAG():
             logging.info('Rephrasing query...')
 
         rephrase_query = self.llm_worker.rephrase_query(query)
-        documents = self.db_worker.search(rephrase_query)
-        context = ''
+        documents_dict = self.db_worker.search(rephrase_query)
+        documents_text = documents_dict['texts']
+        documents_equations = documents_dict['equations']
+        documents_tables = documents_dict['tables']
 
-        for doc in documents:
-            context += f'{doc.page_content}\n\n'
+        text_context = ''
+        equation_context = ''
+        table_context = ''
+
+        for i, doc in enumerate(documents_text):
+            text_context += f'{i+1}. {doc.page_content}\n'
+        
+        for doc in documents_equations:
+            equation_context += f'{doc.page_content}\n'
+        
+        for doc in documents_tables:
+            table_context += f'{doc.page_content}\n'
+        
+        if self.debug:
+            logging.info(f'First staged context:\n{text_context}')
+            logging.info('Reranking context...')
+        
+        reranking_context = self.llm_worker.reranking(query=rephrase_query, context=text_context)
+        full_context = f'{reranking_context}\n\n{equation_context}\n\n{table_context}'
 
         if self.debug:
             logging.info(f'Old query: {query} ---- Rephrased query: {rephrase_query}')
-            logging.info(f'Answering by context.\n\nquery:{rephrase_query}\n\ncontext:{context}')
+            logging.info(f'Answering by context.\n\nquery:{rephrase_query}\n\ncontext:{full_context}')
         
-        return self.llm_worker.answer_by_context(query=rephrase_query, context=context)
+        return self.llm_worker.answer_by_context(query=rephrase_query, context=full_context)
         
     
     def _get_content(self):

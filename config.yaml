@@ -1,5 +1,5 @@
 embeddings:
-  model_name:  "bge-m3"
+  model_name: "bge-m3"
 
 llm:
   model_name: "qwen/qwen3-30b-a3b:free"
@@ -10,7 +10,7 @@ llm:
   repeat_penalty: 1.0
   
 rag:
-  k_text: 2
-  k_equation: 3
-  k_table: 1
+  k_text: 10
+  k_equation: 5
+  k_table: 2
   debug: True

@@ -4,7 +4,7 @@ from omegaconf import DictConfig
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
-from utils.templates import SYSTEM_RAG_TEMPLATE, SYSTEM_REPHRASE_TEMPLATE
+from utils.templates import SYSTEM_RAG_TEMPLATE, SYSTEM_REPHRASE_TEMPLATE, SYSTEM_RERANKING_TEMPLATE
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
 
@@ -48,3 +48,6 @@ class LLMWorker():
     
     def rephrase_query(self, query: str):
         return self._run_llm(SYSTEM_REPHRASE_TEMPLATE, **{'query':query})
+    
+    def reranking(self, query: str, context: str):
+        return self._run_llm(SYSTEM_RERANKING_TEMPLATE, **{'query':query,'context':context})
