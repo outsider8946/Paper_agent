@@ -1,9 +1,10 @@
 import logging
 from uuid import uuid4
 from omegaconf import DictConfig
-from typing import Optional, Dict
+from typing import Optional
+from pathlib import Path
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from utils.extract_utils import extract_text, extract_tables, extract_equations
 
 class DBWorker():
@@ -19,7 +20,7 @@ class DBWorker():
         self.embeddings = self._get_embeddings()
         self.db = self._create_db()
 
-        if mmd_content is not None:
+        if not Path('chroma').exists():
             collection = self.db._client.get_collection('paper_collection')
             ids = collection.get(include=[])['ids']
             if ids:
@@ -35,11 +36,10 @@ class DBWorker():
         return texts + equations + tables
 
     def _get_embeddings(self):
-        return HuggingFaceEmbeddings(
-            model_name=self.model_name,
-            model_kwargs={'device': self.device},
-            encode_kwargs={'normalize_embeddings': True},
-        )
+        return OllamaEmbeddings(
+            model=self.model_name,
+            num_gpu=1,
+            )
     
     def _create_db(self):
         return Chroma(

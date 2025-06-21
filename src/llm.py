@@ -1,32 +1,50 @@
 import os
+from pydantic import SecretStr
 from omegaconf import DictConfig
-from typing import Optional
 from dotenv import load_dotenv
-from pydantic import Field, SecretStr
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
-from langchain_core.utils.utils import secret_from_env
+from utils.templates import SYSTEM_RAG_TEMPLATE, SYSTEM_REPHRASE_TEMPLATE
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers.string import StrOutputParser
 
 load_dotenv()
 
-class LLMOlama():
+class LLMOllama(ChatOllama):
     def __init__(self, config: DictConfig):
-        self.llm = ChatOllama(model=config.llm.model_name,
-                              temperature=config.llm.temperature,
-                              top_k=config.llm.top_k,
-                              top_p=config.llm.top_p,
-                              repeat_penalty=config.llm.repeat_penalty)
+        super().__init__(model=config.llm.model_name,
+                        temperature=config.llm.temperature,
+                        top_k=config.llm.top_k,
+                        top_p=config.llm.top_p,
+                        repeat_penalty=config.llm.repeat_penalty)
 
 class LLMOpenRouter(ChatOpenAI):
-    api: Optional[SecretStr] = Field(
-        alias="api_key",
-        default_factory=secret_from_env("OPENROUTER_API_KEY", default=None),
-    )
+        def __init__(self, config: DictConfig):
+            super().__init__(base_url="https://openrouter.ai/api/v1", 
+                            api_key=SecretStr(os.environ.get("OPENROUTER_API_KEY") or ""),
+                            model=config.llm.model_name,
+                            temperature=config.llm.temperature,
+                            top_p=config.llm.top_p,
+                            presence_penalty=config.llm.repeat_penalty)
 
-    @property
-    def lc_secrets(self) -> dict[str, str]:
-        return {"api_key": "OPENROUTER_API_KEY"}
+class LLMWorker():
+    def __init__(self, config: DictConfig):
+        if config.llm.local:
+            self.llm = LLMOllama(config)
+        else:
+            self.llm = LLMOpenRouter(config)
+    
+    def _run_llm(self, system_prompt: str, **input_params):
+        prompt = ChatPromptTemplate([
+            ('system', system_prompt),
+            ('human', '{query}')
+        ])
+        chain = prompt | self.llm | StrOutputParser()
 
-    def __init__(self, api_key: Optional[str] = None, **kwargs):
-        api_key = (api_key or os.environ.get("OPENROUTER_API_KEY"))
-        super().__init__(base_url="https://openrouter.ai/api/v1", api_key=api_key, **kwargs)
+        return chain.invoke(input_params)
+    
+    def answer_by_context(self, query: str, context: str):
+        return self._run_llm(SYSTEM_RAG_TEMPLATE, **{'query':query,'context':context})
+    
+    def rephrase_query(self, query: str):
+        return self._run_llm(SYSTEM_REPHRASE_TEMPLATE, **{'query':query})

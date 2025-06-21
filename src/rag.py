@@ -2,11 +2,8 @@ import os
 import logging
 from pathlib import Path
 from omegaconf import DictConfig
-from langchain_core.prompts import ChatPromptTemplate
-from utils.templates import SYSTEM_RAG_TEMPLATE
-from langchain_core.output_parsers.string import StrOutputParser
 from db import DBWorker
-from llm import LLMOpenRouter
+from llm import LLMWorker
 
 class RAG():
     def __init__(self, path2pdf: str, config: DictConfig):
@@ -14,25 +11,28 @@ class RAG():
         mmd_content = self._get_content()
         self.debug = config.rag.debug
         self.db_worker = DBWorker(mmd_content=mmd_content, config=config)
-        self.llm = LLMOpenRouter(model_name=config.llm.model_name)
+        self.llm_worker= LLMWorker(config=config)
+
+        if self.debug:
+            logging.info(f'LLM set is local: {config.llm.local}')
     
     def __call__(self, query):
-        documents = self.db_worker.search(query)
+        if self.debug:
+            logging.info('Rephrasing query...')
+
+        rephrase_query = self.llm_worker.rephrase_query(query)
+        documents = self.db_worker.search(rephrase_query)
         context = ''
 
         for doc in documents:
             context += f'{doc.page_content}\n\n'
-        
+
         if self.debug:
-            logging.info(f'Answering by context.\n\nquery:{query}\n\ncontext:{context}')
+            logging.info(f'Old query: {query} ---- Rephrased query: {rephrase_query}')
+            logging.info(f'Answering by context.\n\nquery:{rephrase_query}\n\ncontext:{context}')
         
-        prompt = ChatPromptTemplate([
-            ('system', SYSTEM_RAG_TEMPLATE),
-            ('human', '{query}')
-        ])
-        chain = prompt | self.llm | StrOutputParser()
-            
-        return chain.invoke({'query':query, 'context':context})
+        return self.llm_worker.answer_by_context(query=rephrase_query, context=context)
+        
     
     def _get_content(self):
         content = None
