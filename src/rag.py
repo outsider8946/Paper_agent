@@ -21,23 +21,7 @@ class RAG():
             logging.info('Rephrasing query...')
 
         rephrase_query = self.llm_worker.rephrase_query(query)
-        documents_dict = self.db_worker.search(rephrase_query)
-        documents_text = documents_dict['texts']
-        documents_equations = documents_dict['equations']
-        documents_tables = documents_dict['tables']
-
-        text_context = ''
-        equation_context = ''
-        table_context = ''
-
-        for i, doc in enumerate(documents_text):
-            text_context += f'{i+1}. {doc.page_content}\n'
-        
-        for doc in documents_equations:
-            equation_context += f'{doc.page_content}\n'
-        
-        for doc in documents_tables:
-            table_context += f'{doc.page_content}\n'
+        text_context, equation_context, table_context = self.db_worker.search(rephrase_query)
         
         if self.debug:
             logging.info(f'First staged context:\n{text_context}')

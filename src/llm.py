@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_ollama import ChatOllama
 from utils.templates import SYSTEM_RAG_TEMPLATE, SYSTEM_REPHRASE_TEMPLATE, SYSTEM_RERANKING_TEMPLATE
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers.string import StrOutputParser
 
 load_dotenv()
@@ -33,10 +33,13 @@ class LLMWorker():
             self.llm = LLMOllama(config)
         else:
             self.llm = LLMOpenRouter(config)
+        
+        self.history = []
     
     def _run_llm(self, system_prompt: str, **input_params):
         prompt = ChatPromptTemplate([
             ('system', system_prompt),
+            MessagesPlaceholder('history', optional=True),
             ('human', '{query}')
         ])
         chain = prompt | self.llm | StrOutputParser()
@@ -44,7 +47,9 @@ class LLMWorker():
         return chain.invoke(input_params)
     
     def answer_by_context(self, query: str, context: str):
-        return self._run_llm(SYSTEM_RAG_TEMPLATE, **{'query':query,'context':context})
+        answer = self._run_llm(SYSTEM_RAG_TEMPLATE, **{'query':query,'history': self.history ,'context':context})
+        self.history.extend([('human', query), ('ai', answer)])
+        return answer
     
     def rephrase_query(self, query: str):
         return self._run_llm(SYSTEM_REPHRASE_TEMPLATE, **{'query':query})

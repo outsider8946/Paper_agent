@@ -28,11 +28,24 @@ class DBWorker():
     
     def search(self, query: str):
         logging.info(f'Similirarty search for query: {query}')
-        texts = self.db.similarity_search(query=query, k=self.k_text, filter={'source':'text'})
-        equations = self.db.similarity_search(query=query, k=self.k_eqation, filter={'source':'equation'})
-        tables = self.db.similarity_search(query=query, k=self.k_table, filter={'source':'table'})
+        documents_texts = self.db.similarity_search(query=query, k=self.k_text, filter={'source':'text'})
+        documents_equations = self.db.similarity_search(query=query, k=self.k_eqation, filter={'source':'equation'})
+        documents_tables = self.db.similarity_search(query=query, k=self.k_table, filter={'source':'table'})
+        
+        text_context = ''
+        equation_context = ''
+        table_context = ''
 
-        return {'texts':texts, 'equations':equations, 'tables':tables}#texts + equations + tables
+        for i, doc in enumerate(documents_texts):
+            text_context += f'{i+1}. {doc.page_content}\n'
+        
+        for doc in documents_equations:
+            equation_context += f'{doc.page_content}\n'
+        
+        for doc in documents_tables:
+            table_context += f'{doc.page_content}\n'
+
+        return text_context, equation_context, table_context
 
     def _get_embeddings(self):
         return OllamaEmbeddings(
